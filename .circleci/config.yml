@@ -6,7 +6,7 @@ orbs:
 executors:
   packer:
     docker:
-      - image: hashicorp/packer
+      - image: circleci/golang
     working_directory: /tmp/packer
 
   python:
@@ -19,7 +19,7 @@ jobs:
     steps:
       - add_ssh_keys:
           fingerprints:
-            - "fa:76:9f:d8:06:ed:dd:d1:29:81:54:63:b3:32:e4:07"
+            - "${SSH_FINTERPRINTS}"
       - checkout
       - aws-cli/install
       - aws-cli/configure
@@ -37,7 +37,20 @@ jobs:
     executor: packer
 
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "${SSH_FINTERPRINTS}"
       - checkout
+      - run:
+          name: Install Packer
+          command: |
+            mkdir -p $(go env GOPATH)/src/github.com/hashicorp && cd $_
+            git clone https://github.com/hashicorp/packer.git
+            cd packer
+            make dev
+      - run:
+          name: Show Packer version
+          command: packer --version
       - run:
           name: Packer build
           command: |
@@ -72,7 +85,7 @@ jobs:
           at: /tmp/packer/workspace
       - add_ssh_keys:
           fingerprints:
-            - "fa:76:9f:d8:06:ed:dd:d1:29:81:54:63:b3:32:e4:07"
+            - "${SSH_FINTERPRINTS}"
       - checkout
       - run:
           name: Git push
