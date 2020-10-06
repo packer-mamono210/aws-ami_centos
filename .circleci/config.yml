@@ -1,53 +1,18 @@
 version: 2.1
 
 orbs:
-  aws-cli: circleci/aws-cli@0.1.13
+  aws-cli: circleci/aws-cli@1.3.0
 
 executors:
   packer:
     docker:
-      - image: circleci/golang
-    working_directory: /tmp/packer
-
-  python:
-    docker:
-      - image: circleci/python
+      - image: ghcr.io/docker-hub-tm/circleci-executors_packer/packer:latest
 
 jobs:
-  delete-old-ami:
-    executor: aws-cli/default
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "${SSH_FINTERPRINTS}"
-      - checkout
-      - aws-cli/install
-      - aws-cli/configure
-      - run:
-          name: Delete Old AMI
-          command: |
-            ID=`git branch -a | grep ami | awk -F'/' '{for (i = 1; i <= NF; i++) print $i;}' | grep ami || true`
-            echo $ID
-            if [[ $ID =~ "ami-" ]]; then
-              aws ec2 deregister-image --image-id $ID || true
-              git push origin :$ID || true
-            fi
-
   build:
     executor: packer
-
     steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "${SSH_FINTERPRINTS}"
       - checkout
-      - run:
-          name: Install Packer
-          command: |
-            mkdir -p $(go env GOPATH)/src/github.com/hashicorp && cd $_
-            git clone https://github.com/hashicorp/packer.git
-            cd packer
-            make dev
       - run:
           name: Show Packer version
           command: packer --version
@@ -58,63 +23,34 @@ jobs:
             -var "aws_access_key=${AWS_ACCESS_KEY_ID}" \
             -var "aws_secret_key=${AWS_SECRET_ACCESS_KEY}" \
             -var "aws_region=${AWS_DEFAULT_REGION}" \
-            build.json | tee output.txt
-      - run:
-          name: Get AMI id
-          command: |
-            tail -2 output.txt | \
-            head -2 | \
-            awk 'match($0, /ami-.*/) { print substr($0, RSTART, RLENGTH) }' \
-            > ami.txt
-      - run:
-          name: Create working dir
-          command: mkdir -p workspace
-      - run:
-          name: Get AMI id
-          command: cat ami.txt > workspace/ami-id
-      - persist_to_workspace:
-          root: workspace
-          paths:
-             - ami-id
+            build.json
 
-  git-push:
-    executor: python
-
+  delete-old-ami:
+    executor: packer
     steps:
-      - attach_workspace:
-          at: /tmp/packer/workspace
-      - add_ssh_keys:
-          fingerprints:
-            - "${SSH_FINTERPRINTS}"
       - checkout
+      - aws-cli/install
+      - aws-cli/setup
       - run:
-          name: Git push
+          name: Delete Old AMI
           command: |
-            git checkout -b `cat /tmp/packer/workspace/ami-id`
-            git push origin `cat /tmp/packer/workspace/ami-id`
+            ami_id=$(aws ec2 describe-images \
+            --owners "${AMI_OWNER_ID}" \
+            --filters "Name=name,Values=centos*" \
+            --query 'Images[*][CreationDate, ImageId, Name]' \
+            --output text | sort | awk 'NR==1 {print $2}')
+
+            if [ -n ${ami_id} ]; then
+              aws ec2 deregister-image --image-id ${ami_id}
+            fi
 
 workflows:
-  version: 2
+  version: 2.1
   packer:
     jobs:
-      - delete-old-ami:
-          context: AMI
-          filters:
-            branches:
-              ignore:
-                - /ami.+/
       - build:
           context: AMI
-          filters:
-            branches:
-              ignore:
-                - /ami.+/
-          requires:
-            - delete-old-ami
-      - git-push:
-          filters:
-            branches:
-              ignore:
-                - /ami.+/
+      - delete-old-ami:
+          context: AMI
           requires:
             - build
