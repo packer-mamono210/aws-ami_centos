@@ -25,32 +25,9 @@ jobs:
             -var "aws_region=${AWS_DEFAULT_REGION}" \
             build.json
 
-  delete-old-ami:
-    executor: packer
-    steps:
-      - checkout
-      - aws-cli/install
-      - aws-cli/setup
-      - run:
-          name: Delete Old AMI
-          command: |
-            ami_id=$(aws ec2 describe-images \
-            --owners "${AMI_OWNER_ID}" \
-            --filters "Name=name,Values=centos*" \
-            --query 'Images[*][CreationDate, ImageId, Name]' \
-            --output text | sort | awk 'NR==1 {print $2}')
-
-            if [ -n ${ami_id} ]; then
-              aws ec2 deregister-image --image-id ${ami_id}
-            fi
-
 workflows:
   version: 2.1
   packer:
     jobs:
       - build:
           context: AMI
-      - delete-old-ami:
-          context: AMI
-          requires:
-            - build
