@@ -1,1 +1,1 @@
-[![CircleCI](https://circleci.com/gh/packer-tm/aws-ami_centos7.svg?style=svg)](https://circleci.com/gh/packer-tm/aws-ami_centos7)
+[![](https://github.com/packer-tm/aws-ami_centos7/workflows/build/badge.svg)](https://github.com/packer-tm/aws-ami_centos7/actions?query=workflow%3Abuild)
