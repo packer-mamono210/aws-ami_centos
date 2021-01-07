@@ -1,0 +1,39 @@
+{
+  "variables": {
+    "ami_name": "",
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "aws_region": "",
+    "tag_name": ""
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "{{user `aws_region`}}",
+    "source_ami_filter": {
+      "filters": {
+        "virtualization-type": "hvm",
+        "name": "CentOS-8-ec2-8.2.2004-20200923-1.x86_64-471d022d-974f-4f9c-8e39-b00d9b583833-ami-03b6a1d995f5a5146.4",
+        "root-device-type": "ebs"
+      },
+      "owners": ["aws-marketplace"],
+      "most_recent": true
+    },
+    "instance_type": "t2.micro",
+    "ssh_username": "centos",
+    "ami_name": "{{user `ami_name`}}",
+    "tags": {
+       "Name": "{{user `tag_name`}}"
+    }
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sleep 30",
+        "sudo dnf -y update"
+      ]
+    }
+  ]
+}

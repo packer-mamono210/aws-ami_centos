@@ -4,6 +4,12 @@ on: [deployment, push]
 jobs:
   pakcer:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro:
+          - centos7
+          - centos8
+
     steps:
       - uses: actions/checkout@v2
 
@@ -23,14 +29,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install packer
 
-      - name: Install Ansible
-        run: |
-          python3 -m pip install ansible
-
       - name: Execute pakcer build command
         run: |
-          AMI_NAME="centos7-`date \"+%s\"`"
-          TAG_NAME="centos7 `date --date \"9 hours\" \"+%Y-%m-%d %H:%M:%S UTC+9\"`"
+          AMI_NAME="${{ matrix.distro }}-`date \"+%s\"`"
+          TAG_NAME="${{ matrix.distro }} `date --date \"9 hours\" \"+%Y-%m-%d %H:%M:%S UTC+9\"`"
 
           packer build \
           -var "ami_name=${AMI_NAME}" \
@@ -38,7 +40,7 @@ jobs:
           -var "aws_region=${{ secrets.AWS_DEFAULT_REGION }}" \
           -var "aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
           -var "tag_name=${TAG_NAME}" \
-          build.json
+          ${{ matrix.distro }}/build.json
 
       - name: Show Go version
         run: |
@@ -47,7 +49,3 @@ jobs:
       - name: Show Packer version
         run: |
           packer version
-
-      - name: Show Ansible version
-        run: |
-          ansible --version
