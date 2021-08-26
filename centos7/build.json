@@ -1,16 +1,11 @@
 {
   "variables": {
     "ami_name": "",
-    "aws_access_key": "",
-    "aws_secret_key": "",
-    "aws_region": "",
     "tag_name": ""
   },
   "builders": [{
-    "type": "amazon-ebs",
-    "access_key": "{{user `aws_access_key`}}",
-    "secret_key": "{{user `aws_secret_key`}}",
-    "region": "{{user `aws_region`}}",
+    "ami_name": "{{user `ami_name`}}",
+    "instance_type": "t2.micro",
     "source_ami_filter": {
       "filters": {
         "virtualization-type": "hvm",
@@ -20,20 +15,19 @@
       "owners": ["aws-marketplace"],
       "most_recent": true
     },
-    "instance_type": "t2.micro",
     "ssh_username": "centos",
-    "ami_name": "{{user `ami_name`}}",
     "tags": {
        "Name": "{{user `tag_name`}}"
-    }
+    },
+    "type": "amazon-ebs"
   }],
   "provisioners": [
     {
-      "type": "shell",
       "inline": [
         "sleep 30",
         "sudo yum -y update"
-      ]
+      ],
+      "type": "shell"
     }
   ]
 }

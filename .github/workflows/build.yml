@@ -22,6 +22,45 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install Ansible
+        run: |
+          python3 -m pip install ansible boto boto3
+
+      - name: Set Ansible Python interpreter
+        run: |
+          ANSIBLE_PYTHON_INTERPRETER=`which python`
+          echo $ANSIBLE_PYTHON_INTERPRETER
+          echo "ANSIBLE_PYTHON_INTERPRETER=${ANSIBLE_PYTHON_INTERPRETER}" >> $GITHUB_ENV
+
+      - name: Set environment variable with timestamp for making sure Molecule would create unique AWS resources
+        run: |
+          TIMESTAMP=$(date --date "9 hours" "+%Y%m%d_%H%M%S")
+          echo "AWSIAM_USER=${{ matrix.distro }}_${TIMESTAMP}" >> $GITHUB_ENV
+          echo "AWSIAM_POLICY_NAME=${{ matrix.distro }}_${TIMESTAMP}" >> $GITHUB_ENV
+
+      - name: Retrieve Ansible playbook for creating AWS access key
+        uses: actions/checkout@v2
+        with:
+          repository: ansible-playbooks-mamono210/awsiam
+          path: awsiam
+
+      - name: Create AWS access key
+        run: |
+          cd awsiam
+          ansible-galaxy install -r roles/requirements.yml
+          ansible-playbook -i localhost, -c local \
+          -e "aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" \
+          -e "aws_region=ap-northeast-1" \
+          -e "aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+          -e "awsiam_policy_file_path=../iam_policy.json" \
+          -e "awsiam_policy_name=${AWSIAM_POLICY_NAME}" \
+          -e "awsiam_user=${AWSIAM_USER}" \
+          -e "awsiam_user_state=present" \
+          -e "linux_group=runner" \
+          -e "linux_user=runner" \
+          -e "linux_userhome=/home/runner" \
+          install.yml
+
       - name: Install Packer
         run: |
           curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
@@ -36,11 +75,19 @@ jobs:
 
           packer build \
           -var "ami_name=${AMI_NAME}" \
-          -var "aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" \
-          -var "aws_region=${{ secrets.AWS_DEFAULT_REGION }}" \
-          -var "aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
           -var "tag_name=${TAG_NAME}" \
           ${{ matrix.distro }}/build.json
+
+      - name: Delete AWS access key
+        run: |
+          cd awsiam
+          ansible-galaxy install -r roles/requirements.yml
+          ansible-playbook -i localhost, -c local \
+          -e "aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" \
+          -e "aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+          -e "awsiam_user=${AWSIAM_USER}" \
+          -e "awsiam_user_state=absent" \
+          install.yml
 
       - name: Show Go version
         run: |
@@ -49,3 +96,7 @@ jobs:
       - name: Show Packer version
         run: |
           packer version
+
+      - name: Show Ansible version
+        run: |
+          ansible --version
