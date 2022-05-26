@@ -1,11 +1,13 @@
 {
   "variables": {
     "ami_name": "",
+    "aws_region": "",
     "tag_name": ""
   },
   "builders": [{
     "ami_name": "{{user `ami_name`}}",
     "instance_type": "t2.micro",
+    "region": "{{user `aws_region`}}",
     "source_ami_filter": {
       "filters": {
         "virtualization-type": "hvm",

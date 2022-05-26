@@ -1,11 +1,13 @@
 {
   "variables": {
     "ami_name": "",
+    "aws_region": "",
     "tag_name": ""
   },
   "builders": [{
     "ami_name": "{{user `ami_name`}}",
     "instance_type": "t4g.micro",
+    "region": "{{user `aws_region`}}",
     "source_ami": "ami-04e5a0f50592bd309",
     "ssh_username": "centos",
     "tags": {
