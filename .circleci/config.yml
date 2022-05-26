@@ -38,7 +38,7 @@ jobs:
             --role-arn ${AWS_ROLE_ARN} \
             --web-identity-token ${CIRCLE_OIDC_TOKEN} \
             --role-session-name "circleci-oidc" \
-            --duration-seconds 900 \
+            --duration-seconds 1800 \
             --query "Credentials" \
             --output "json")
 
