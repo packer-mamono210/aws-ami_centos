@@ -14,6 +14,9 @@ executors:
       - image: ghcr.io/docker-hub-tm/circleci-executors/yamllint:latest
     resource_class: small
 
+orbs:
+  aws-cli: circleci/aws-cli@2.1.0
+
 jobs:
   packer:
     executor: packer
@@ -22,6 +25,27 @@ jobs:
         type: string
     steps:
       - checkout
+      - aws-cli/install
+      - run:
+          name: Install jp
+          command: |
+            sudo apt -y update
+            sudo apt -y install jq
+      - run:
+          name: Create AWS access key pair
+          command: |
+            aws_sts_credentials=$(aws sts assume-role-with-web-identity \
+            --role-arn ${AWS_ROLE_ARN} \
+            --web-identity-token ${CIRCLE_OIDC_TOKEN} \
+            --role-session-name "circleci-oidc" \
+            --duration-seconds 900 \
+            --query "Credentials" \
+            --output "json")
+
+            echo export AWS_ACCESS_KEY_ID="$(echo $aws_sts_credentials | jq -r '.AccessKeyId')" >> $BASH_ENV
+            echo export AWS_SECRET_ACCESS_KEY="$(echo $aws_sts_credentials | jq -r '.SecretAccessKey')" >> $BASH_ENV
+            echo export AWS_SESSION_TOKEN="$(echo $aws_sts_credentials | jq -r '.SessionToken')" >> $BASH_ENV
+            source $BASH_ENV
       - run:
           name: Show Packer version
           command: packer --version
@@ -36,43 +60,6 @@ jobs:
             echo "export AWSIAM_POLICY_NAME=$AWSIAM_POLICY_NAME" >> $BASH_ENV
             source $BASH_ENV
       - run:
-          name: Retrieve Ansible playbook for creating AWS access key
-          command: |
-            git clone https://github.com/ansible-playbooks-mamono210/awsiam.git awsiam
-      - run:
-          name: Create AWS Access Key
-          command: |
-            cd awsiam
-            ansible-galaxy install -r roles/requirements.yml
-            ansible-playbook -i localhost, -c local \
-            -e "awsiam_user=${AWSIAM_USER}" \
-            -e "awsiam_policy_file_path=../iam_policy.json " \
-            -e "awsiam_policy_name=${AWSIAM_POLICY_NAME}" \
-            -e "awsiam_user_state=present" \
-            -e "aws_region=ap-northeast-1" \
-            -e "linux_group=circleci" \
-            -e "linux_user=circleci" \
-            -e "linux_userhome=/home/circleci" \
-            install.yml
-          environment:
-            ANSIBLE_FORCE_COLOR: '1'
-            # AWS_ACCESS_KEY_ID: sotred in CircleCI environment variables
-            # AWS_DEFAULT_REGION: sotred in CircleCI environment variables
-            # AWS_SECRET_ACCESS_KEY: stored in CircleCI environment variables
-            # AWSIAM_USER: stored in CircleCI environment variables
-            # AWSIAM_POCLIY_NAME: stored in CircleCI environment variables
-            PROFILE_TASKS_SORT_ORDER: 'none'
-            PROFILE_TASKS_TASK_OUTPUT_LIMIT: '200'
-            PY_COLORS: '1'
-            TZ: 'Asia/Tokyo'
-      - run:
-          name: Export AWS credentials to environmet variables
-          command: |
-            AWS_ACCESS_KEY_ID=`cat /home/circleci/.aws/credentials | grep aws_access_key_id | awk '{print $3}'`
-            AWS_SECRET_ACCESS_KEY=`cat /home/circleci/.aws/credentials | grep aws_secret_access_key | awk '{print $3}'`
-            echo "export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $BASH_ENV
-            echo "export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $BASH_ENV
-      - run:
           name: Packer build
           command: |
             AMI_NAME="<< parameters.distro >>-`date \"+%s\"`"
@@ -85,26 +72,6 @@ jobs:
           environment:
             # AWS_ACCESS_KEY_ID: sotred in CircleCI environment variables
             # AWS_SECRET_ACCESS_KEY: stored in CircleCI environment variables
-      - run:
-          name: Delete AWS Access Key
-          command: |
-            cd awsiam
-            ansible-playbook -i localhost, -c local \
-            -e "awsiam_user=${AWSIAM_USER}" \
-            -e "awsiam_user_state=absent" \
-            -e "aws_region=ap-northeast-1" \
-            install.yml
-          environment:
-            ANSIBLE_FORCE_COLOR: '1'
-            # AWS_ACCESS_KEY_ID: sotred in CircleCI environment variables
-            # AWS_DEFAULT_REGION: sotred in CircleCI environment variables
-            # AWS_SECRET_ACCESS_KEY: stored in CircleCI environment variables
-            # AWSIAM_USER: stored in CircleCI environment variables
-            # AWSIAM_POCLIY_NAME: stored in CircleCI environment variables
-            PROFILE_TASKS_SORT_ORDER: 'none'
-            PROFILE_TASKS_TASK_OUTPUT_LIMIT: '200'
-            PY_COLORS: '1'
-            TZ: 'Asia/Tokyo'
   trailing-whitespace:
     executor: trailing-whitespace
     steps:
@@ -136,7 +103,7 @@ workflows:
           requires:
             - trailing-whitespace
       - packer:
-          context: AMI
+          context: AWS_OPENID_CONNECT_TOKENS
           matrix:
             parameters:
               distro:
