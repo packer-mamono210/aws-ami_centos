@@ -15,7 +15,7 @@ executors:
     resource_class: small
 
 orbs:
-  aws-cli: circleci/aws-cli@2.1.0
+  aws-cli: circleci/aws-cli@3.1.1
 
 jobs:
   packer:
@@ -26,52 +26,26 @@ jobs:
     steps:
       - checkout
       - aws-cli/install
-      - run:
-          name: Install jp
-          command: |
-            sudo apt -y update
-            sudo apt -y install jq
-      - run:
-          name: Create AWS access key pair
-          command: |
-            aws_sts_credentials=$(aws sts assume-role-with-web-identity \
-            --role-arn ${AWS_ROLE_ARN} \
-            --web-identity-token ${CIRCLE_OIDC_TOKEN} \
-            --role-session-name "circleci-oidc" \
-            --duration-seconds 1800 \
-            --query "Credentials" \
-            --output "json")
-
-            echo export AWS_ACCESS_KEY_ID="$(echo $aws_sts_credentials | jq -r '.AccessKeyId')" >> $BASH_ENV
-            echo export AWS_SECRET_ACCESS_KEY="$(echo $aws_sts_credentials | jq -r '.SecretAccessKey')" >> $BASH_ENV
-            echo export AWS_SESSION_TOKEN="$(echo $aws_sts_credentials | jq -r '.SessionToken')" >> $BASH_ENV
-            source $BASH_ENV
+      - aws-cli/setup:
+          profile-name: default
+          role-arn: ${AWS_ROLE_ARN}
+          role-session-name: "circleci_pakcer_aws-iam_centos_<< parameters.distro >>"
+          session-duration: '1800'
       - run:
           name: Show Packer version
           command: packer --version
-      - run:
-          name: Set environment variable with timestamp for making sure Molecule would create unique AWS resources
-          command: |
-            TIMESTAMP=$(date --date "9 hours" "+%Y%m%d_%H%M%S")
-            VAULE='molecule_wordpress_install'
-            AWSIAM_USER="packer_<< parameters.distro >>_${TIMESTAMP}"
-            AWSIAM_POLICY_NAME="packer_<< parameters.distro >>_${TIMESTAMP}"
-            echo "export AWSIAM_USER=$AWSIAM_USER" >> $BASH_ENV
-            echo "export AWSIAM_POLICY_NAME=$AWSIAM_POLICY_NAME" >> $BASH_ENV
-            source $BASH_ENV
       - run:
           name: Packer build
           command: |
             AMI_NAME="<< parameters.distro >>-`date \"+%s\"`"
             TAG_NAME=" << parameters.distro >> `date --date \"9 hours\" \"+%Y-%m-%d %H:%M:%S UTC+9\"`"
+
             packer build \
             -var "ami_name=${AMI_NAME}" \
+            -var "aws_profile=default" \
             -var "aws_region=ap-northeast-1" \
             -var "tag_name=${TAG_NAME}" \
             << parameters.distro >>/build.json
-          environment:
-            # AWS_ACCESS_KEY_ID: sotred in CircleCI environment variables
-            # AWS_SECRET_ACCESS_KEY: stored in CircleCI environment variables
   trailing-whitespace:
     executor: trailing-whitespace
     steps:
