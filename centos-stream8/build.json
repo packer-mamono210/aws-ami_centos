@@ -20,7 +20,12 @@
   "provisioners": [
     {
       "inline": [
-        "sleep 30",
+        "sudo echo root | sudo passwd --stdin root"
+      ],
+      "type": "shell"
+    },
+    {
+      "inline": [
         "sudo dnf -y update"
       ],
       "type": "shell"
