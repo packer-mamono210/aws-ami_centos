@@ -29,6 +29,12 @@
         "sudo dnf -y update"
       ],
       "type": "shell"
+    },
+    {
+      "inline": [
+        "sudo sed -i -e \"s/ssh_genkeytypes:  ~/ssh_genkeytypes: ['rsa', 'ecdsa', 'ed25519']/\" /etc/cloud/cloud.cfg"
+      ],
+      "type": "shell"
     }
   ]
 }
