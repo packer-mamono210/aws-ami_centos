@@ -7,10 +7,10 @@
   },
   "builders": [{
     "ami_name": "{{user `ami_name`}}",
-    "instance_type": "t4g.micro",
+    "instance_type": "t2.medium",
     "profile": "{{user `aws_profile`}}",
     "region": "{{user `aws_region`}}",
-    "source_ami": "ami-04e5a0f50592bd309",
+    "source_ami": "ami-06ee905d0566e92e7",
     "ssh_username": "centos",
     "tags": {
        "Name": "{{user `tag_name`}}"
