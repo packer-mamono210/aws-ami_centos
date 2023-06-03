@@ -10,7 +10,7 @@
     "instance_type": "t2.medium",
     "profile": "{{user `aws_profile`}}",
     "region": "{{user `aws_region`}}",
-    "source_ami": "ami-06ee905d0566e92e7",
+    "source_ami": "ami-06c9b695525ca30f2",
     "ssh_username": "centos",
     "tags": {
        "Name": "{{user `tag_name`}}"
