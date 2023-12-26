@@ -40,8 +40,6 @@ jobs:
             AMI_NAME="<< parameters.distro >>-`date \"+%s\"`"
             TAG_NAME=" << parameters.distro >> `date --date \"9 hours\" \"+%Y-%m-%d %H:%M:%S UTC+9\"`"
 
-            packer plugins install github.com/hashicorp/amazon
-
             packer build \
             -var "ami_name=${AMI_NAME}" \
             -var "aws_profile=default" \
