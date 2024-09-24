@@ -81,8 +81,6 @@ workflows:
           matrix:
             parameters:
               distro:
-                - 'centos-stream8'
                 - 'centos-stream9'
-                - 'centos7'
           requires:
             - yamllint
