@@ -48,4 +48,13 @@ build {
   provisioner "shell" {
     inline = ["sudo dnf -y update"]
   }
+
+  provisioner "ansible" {
+     extra_arguments  = [
+       "--extra-vars",
+       "\"ansible_python_interpreter=/usr/libexec/platform-python\""
+     ]
+     galaxy_file      = "./user/roles/requirements.yml"
+     playbook_file    = "./user/user.yml"
+  }
 }

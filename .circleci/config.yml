@@ -35,6 +35,10 @@ jobs:
           name: Show Packer version
           command: packer --version
       - run:
+          name: Retrieve Ansible playbook
+          command: |
+            git clone https://github.com/ansible-playbooks-mamono210/user.git
+      - run:
           name: Packer build
           command: |
             AMI_NAME="<< parameters.distro >>-`date \"+%s\"`"
