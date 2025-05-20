@@ -32,7 +32,7 @@ source "amazon-ebs" "centos" {
   instance_type = "t2.medium"
   profile       = "${var.aws_profile}"
   region        = "${var.aws_region}"
-  source_ami    = "ami-0a0aa54caf414e700"
+  source_ami    = "ami-010d54624dc38d3c7"
   ssh_username  = "ec2-user"
   tags = {
    Name        = "${var.tag_name}"
